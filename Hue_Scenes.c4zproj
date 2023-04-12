@@ -1,4 +1,4 @@
-﻿<Driver type="c4z" name="WLED-PresetCycler" Encryption="false">
+﻿<Driver type="c4z" name="Hue_Scenes" Encryption="false">
  <Items>
   <Item type="dir" c4zDir="www" name="www" recurse="true" exclude="false" />
   <Item type="file" name="driver.lua" />
