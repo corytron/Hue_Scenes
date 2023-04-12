@@ -1,8 +1,6 @@
-![WLED](https://user-images.githubusercontent.com/69341431/158558688-2b1e5e28-73e3-4aea-a6bb-800aafa6e1bb.png)
+# WLED Preset Cycler
 
-# Control4 [WLED](https://github.com/Aircoookie/WLED) Preset Cycler
-
-Control4 Driver for [WLED](https://github.com/Aircoookie/WLED) Controller Preset Cycling and Brightness/On/Off Control
+Control4 Driver for WLED Controller Preset Cycling and Brightness/On/Off Control
 
 ### Quick Start:
 		
@@ -35,6 +33,3 @@ Control4 Driver for [WLED](https://github.com/Aircoookie/WLED) Controller Preset
 - Version 3: Icon for Driver and LUA/XML cleanup
 - Version 4: Added Custom Preset programming action for selecting WLED Presets outside of the 1-10 UI Button Cycle range.
 - Version 5: Added reduced ALS support (Full ALS support may be added in the future)
-
-## Compiled Driver Available from Releases:
-https://github.com/Leighm0/WLED-PresetCycler/releases
