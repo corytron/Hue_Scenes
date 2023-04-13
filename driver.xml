@@ -15,7 +15,6 @@
 	<proxies qty="2">
 		<proxy proxybindingid="5001" name="HUE_SCENES" primary="True">light_v2</proxy>
 	</proxies>
-	<events/>
 	<config>
 		<script file="driver.lua"/>
 		<documentation file="www/documentation/index.html"/>
