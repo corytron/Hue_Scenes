@@ -35,7 +35,7 @@ function OnDriverLateInit()
 	for k,v in pairs(Properties) do OnPropertyChanged(k) end
 	C4:SendToProxy(g_LIGHT_PROXY, "ONLINE_CHANGED", { STATE = true }, "NOTIFY")
 	C4:SendToProxy(g_LIGHT_PROXY, "ONLINE_CHANGED", "true", "NOTIFY")
-	C4:CreateServer(g_UDP_PORT, "", true)
+	--C4:CreateServer(g_UDP_PORT, "", true)
 end
 
 -----------------------------------------------------------------------------------------------------------------------------
@@ -44,7 +44,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------------
 function OnDriverDestroyed()
 	if (g_DbgPrint ~= nil) then g_DbgPrint:Cancel() end
-	C4:DestroyServer(g_UDP_PORT)
+	--C4:DestroyServer(g_UDP_PORT)
 end
 
 -----------------------------------------------------------------------
@@ -52,7 +52,7 @@ end
 --Parameters    : nHandle(int), strData(table)
 --Description   : Function called when Data comes in from CreateServer.
 -----------------------------------------------------------------------
-function OnServerDataIn(nHandle, strData)
+--[[ function OnServerDataIn(nHandle, strData)
 	local brightness = 0
 	brightness = math.floor((string.byte(strData,3) / 255) * 100)
 	g_lightLevel = brightness
@@ -77,7 +77,7 @@ function OnServerDataIn(nHandle, strData)
 		C4:UpdateProperty("Power State", "on")
 		C4:UpdateProperty("Brightness", g_lightLevel)
 	end
-end
+end ]]
 
 ----------------------------------------------------------------------------
 --Function Name : OnPropertyChanged
@@ -122,11 +122,11 @@ function OPC.DEBUG_MODE(strProperty)
 end
 
 -------------------------------------------------------------------------
---Function Name : OPC.IP_ADDRESS
+--Function Name : OPC.BRIDGE_IP
 --Parameters    : strProperty(str)
---Description   : Function called when IP Address property changes value.
+--Description   : Function called when Bridge IP Address property changes value.
 -------------------------------------------------------------------------
-function OPC.IP_ADDRESS(strProperty)
+function OPC.BRIDGE_ADDRESS(strProperty)
 	g_IP = strProperty or "0.0.0.0"
 end
 
@@ -135,20 +135,20 @@ end
 --Parameters    : strProperty(str)
 --Description   : Function called when UDP Multicast Port property changes value.
 ---------------------------------------------------------------------------------
-function OPC.UDP_MULTICAST_PORT(strProperty)
+--[[function OPC.UDP_MULTICAST_PORT(strProperty)
 	C4:DestroyServer(g_UDP_PORT)
 	g_UDP_PORT = strProperty or 21324
 	C4:CreateServer(g_UDP_PORT, "", true)
-end
+end]]
 
 ----------------------------------------------------------------------
 --Function Name : OPC.PRESETS
 --Parameters    : strProperty(str)
 --Description   : Function called when Presets property changes value.
 ----------------------------------------------------------------------
-function OPC.PRESETS(strProperty)
+--[[function OPC.PRESETS(strProperty)
 	g_MAX_PRESETS = strProperty or 1
-end
+end]]
 
 -----------------------------------------------------------------------------------------------------
 --Function Name : ExecuteCommand
@@ -178,23 +178,23 @@ function ExecuteCommand(strCommand, tParams)
 end
 
 ----------------------------------------------------------------------------------
---Function Name : EC.SELECT_PRESET
+--Function Name : EC.RECALL_SCENE
 --Parameters    : tParams(table)
---Description   : Function called when "Select Preset" ExecuteCommand is received.
+--Description   : Function called when "Recall Scene" ExecuteCommand is received.
 ----------------------------------------------------------------------------------
-function EC.SELECT_PRESET(tParams)
-	local preset = tParams["Preset"] or "off"
-	setPreset(preset)
+function EC.RECALL_SCENE(tParams)
+	local scene = Properties['Scene ID']
+	recallScene(scene)
 end
 
 ----------------------------------------------------------------------------------
---Function Name : EC.CUSTOM_PRESET
+--Function Name : EC.RECALL_SMART_SCENE
 --Parameters    : tParams(table)
---Description   : Function called when "Custom Preset" ExecuteCommand is received.
+--Description   : Function called when "Recall Smart Scene" ExecuteCommand is received.
 ----------------------------------------------------------------------------------
-function EC.CUSTOM_PRESET(tParams)
-	local preset = tParams["Preset"] or "off"
-	setWLEDPreset(preset)
+function EC.RECALL_SMART_SCENE(tParams)
+	local smartScene = Properties['Scene ID']
+	recallScene(smartScene)
 end
 
 -----------------------------------------------------------------
@@ -356,7 +356,7 @@ end
 --Parameters    : preset(int)
 --Description   : Function called to send the Preset to WLED Controller based on Preset Selection.
 --------------------------------------------------------------------------------------------------
-function setWLEDPreset(preset) 
+--[[function setWLEDPreset(preset) 
 	local baseUrl = "http://" .. g_IP .. "/win&PL="
 	local queryUrl = baseUrl .. preset
 	local t = C4:url() :OnDone(
@@ -374,15 +374,15 @@ function setWLEDPreset(preset)
 		end)
 	:SetOptions({ ["fail_on_error"] = false, ["timeout"] = 30, ["connect_timeout"] = 10})
 	:Get(queryUrl, {})
-end
+end]]
 
 --------------------------------------------------------
---Function Name : setWLEDOn
+--Function Name : setSceneOn
 --Parameters    : preset(int)
 --Description   : Function called to turn WLED light on.
 --------------------------------------------------------
-function setWLEDOn() 
-	setWLEDLevel(255)
+function setSceneOn() 
+	setSceneLevel(255)
 	g_lightOn = true
 	setPreset("on")
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL_CHANGED", "100", "NOTIFY")
@@ -441,7 +441,7 @@ end
 --Parameters    : preset(str)
 --Description   : Function called to set the Preset based on Preset Selection.
 ------------------------------------------------------------------------------
-function setPreset(preset)
+--[[function setPreset(preset)
 	C4:SendToProxy(g_UIBUTTON_PROXY, "ICON_CHANGED", {icon=preset, icon_description="Preset=" .. preset})
 	g_currentPreset = preset
     if(g_currentPreset == "off") then
@@ -477,13 +477,13 @@ function setPreset(preset)
     elseif(g_currentPreset == "10") then
 		setWLEDPreset(10)
     end
-end
+end]]
 
 --------------------------------------------------------------
 --Function Name : nextPreset
 --Description   : Function called to cycle to the next Preset.
 --------------------------------------------------------------
-function nextPreset()
+--[[function nextPreset()
 	if(g_currentPreset == "off") then
 		g_currentPreset = "1"
     elseif(g_currentPreset == "on") then
@@ -494,7 +494,7 @@ function nextPreset()
 		g_currentPreset = "" .. tonumber(g_currentPreset) + 1
     end
 	setPreset(g_currentPreset)
-end
+end]]
 
 ---------------------------------------------------------------------------------------------
 --Function Name : Dbg

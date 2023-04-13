@@ -54,7 +54,7 @@
 				<default>Device Information</default>
 			</property>
 			<property>
-				<name>Hue Brideg IP Address</name>
+				<name>Bridge IP</name>
 				<type>STRING</type>
 				<default>10.0.1.220</default>
 			</property>
