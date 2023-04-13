@@ -5,14 +5,13 @@ do
 	EC = {}
 	OPC = {}
 	RFP = {}
-	g_MAX_PRESETS = 1
 	g_IP = "0.0.0.0"
-	g_UDP_PORT = 21324
 	g_LIGHT_PROXY = 5001
-	g_UIBUTTON_PROXY = 5002
-	g_currentPreset = "off"
+	g_smartScene = false
+	g_url = ('https://' .. Properties['Bridge IP'] .. '/clip/v2/resource/scene/' .. Properties['Scene ID'])
+	g_appKey = "000000000"
+	g_sceneId = "000000000"
 	g_lightOn = false
-	g_lightLevel = 0
 	g_debugMode = 0
 	g_DbgPrint = nil
 end
@@ -35,7 +34,6 @@ function OnDriverLateInit()
 	for k,v in pairs(Properties) do OnPropertyChanged(k) end
 	C4:SendToProxy(g_LIGHT_PROXY, "ONLINE_CHANGED", { STATE = true }, "NOTIFY")
 	C4:SendToProxy(g_LIGHT_PROXY, "ONLINE_CHANGED", "true", "NOTIFY")
-	--C4:CreateServer(g_UDP_PORT, "", true)
 end
 
 -----------------------------------------------------------------------------------------------------------------------------
@@ -44,40 +42,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------------
 function OnDriverDestroyed()
 	if (g_DbgPrint ~= nil) then g_DbgPrint:Cancel() end
-	--C4:DestroyServer(g_UDP_PORT)
 end
-
------------------------------------------------------------------------
---Function Name : OnServerDataIn
---Parameters    : nHandle(int), strData(table)
---Description   : Function called when Data comes in from CreateServer.
------------------------------------------------------------------------
---[[ function OnServerDataIn(nHandle, strData)
-	local brightness = 0
-	brightness = math.floor((string.byte(strData,3) / 255) * 100)
-	g_lightLevel = brightness
-	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL_CHANGED", g_lightLevel, "NOTIFY")
-	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL", g_lightLevel, "NOTIFY")
-	if (g_lightLevel == 0) then
-		g_lightOn = false
-		g_currentPreset = "off"
-		C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "False"})
-		C4:SendToProxy(301, "MATCH_LED_STATE", {['STATE'] = "True"})
-		C4:SendToProxy(302, "MATCH_LED_STATE", {['STATE'] = "False"})
-		C4:UpdateProperty("Power State", "off")
-		C4:UpdateProperty("Brightness", g_lightLevel)
-	else
-		g_lightOn = true
-		if (g_currentPreset == "off") then
-			g_currentPreset = "on"
-		end
-		C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "True"})
-		C4:SendToProxy(301, "MATCH_LED_STATE", {['STATE'] = "False"})
-		C4:SendToProxy(302, "MATCH_LED_STATE", {['STATE'] = "True"})
-		C4:UpdateProperty("Power State", "on")
-		C4:UpdateProperty("Brightness", g_lightLevel)
-	end
-end ]]
 
 ----------------------------------------------------------------------------
 --Function Name : OnPropertyChanged
@@ -124,31 +89,42 @@ end
 -------------------------------------------------------------------------
 --Function Name : OPC.BRIDGE_IP
 --Parameters    : strProperty(str)
---Description   : Function called when Bridge IP Address property changes value.
+--Description   : Function called when Hue Bridge IP Address property changes value.
 -------------------------------------------------------------------------
-function OPC.BRIDGE_ADDRESS(strProperty)
+function OPC.BRIDGE_IP(strProperty)
 	g_IP = strProperty or "0.0.0.0"
 end
 
----------------------------------------------------------------------------------
---Function Name : OPC.UDP_MULTICAST_PORT
+-------------------------------------------------------------------------
+--Function Name : OPC.HUE_BRIDGE_APP_KEY
 --Parameters    : strProperty(str)
---Description   : Function called when UDP Multicast Port property changes value.
----------------------------------------------------------------------------------
---[[function OPC.UDP_MULTICAST_PORT(strProperty)
-	C4:DestroyServer(g_UDP_PORT)
-	g_UDP_PORT = strProperty or 21324
-	C4:CreateServer(g_UDP_PORT, "", true)
-end]]
+--Description   : Function called when Hue Bridge App Key property changes value.
+-------------------------------------------------------------------------
+function OPC.HUE_BRIDGE_APP_KEY(strProperty)
+	g_appKey = strProperty or "000000000"
+end
 
-----------------------------------------------------------------------
---Function Name : OPC.PRESETS
+-------------------------------------------------------------------------
+--Function Name : OPC.SCENE_ID
 --Parameters    : strProperty(str)
---Description   : Function called when Presets property changes value.
-----------------------------------------------------------------------
---[[function OPC.PRESETS(strProperty)
-	g_MAX_PRESETS = strProperty or 1
-end]]
+--Description   : Function called when Scene ID property changes value.
+-------------------------------------------------------------------------
+function OPC.SCENE_ID(strProperty)
+	g_sceneId = strProperty or "000000000"
+end
+
+-------------------------------------------------------------------------
+--Function Name : OPC.IS_A_SMART_SCENE
+--Parameters    : strProperty(str)
+--Description   : Function called when Is A Smart Scene property changes value.
+-------------------------------------------------------------------------
+function OPC.IS_A_SMART_SCENE(strProperty)
+	if (strProperty == "No") then
+		g_smartScene = false
+	else
+		g_smartScene = true
+	end
+end
 
 -----------------------------------------------------------------------------------------------------
 --Function Name : ExecuteCommand
@@ -188,13 +164,13 @@ function EC.RECALL_SCENE(tParams)
 end
 
 ----------------------------------------------------------------------------------
---Function Name : EC.RECALL_SMART_SCENE
+--Function Name : EC.SCENE_OFF
 --Parameters    : tParams(table)
---Description   : Function called when "Recall Smart Scene" ExecuteCommand is received.
+--Description   : Function called when "Scene Off" ExecuteCommand is received.
 ----------------------------------------------------------------------------------
-function EC.RECALL_SMART_SCENE(tParams)
-	local smartScene = Properties['Scene ID']
-	recallScene(smartScene)
+function EC.SCENE_OFF(tParams)
+	local scene = Properties['Scene ID']
+	sceneOff(scene)
 end
 
 -----------------------------------------------------------------
@@ -221,17 +197,6 @@ function ReceivedFromProxy(idBinding, strCommand, tParams)
 	end
 end
 
-------------------------------------------------------------------------------
---Function Name : RFP.SELECT
---Parameters    : tParams(table), idBinding(int)
---Description   : Function called when "SELECT" ReceivedFromProxy is received.
-------------------------------------------------------------------------------
-function RFP.SELECT(idBinding, tParams)
-	if(idBinding == g_UIBUTTON_PROXY) then
-		nextPreset()
-	end
-end
-
 --------------------------------------------------------------------------
 --Function Name : RFP.ON
 --Parameters    : tParams(table), idBinding(int)
@@ -239,7 +204,7 @@ end
 --------------------------------------------------------------------------
 function RFP.ON(idBinding, tParams)
 	if(idBinding == g_LIGHT_PROXY) then
-		setWLEDOn()
+		recallScene()
 	end
 end
 
@@ -250,7 +215,7 @@ end
 ---------------------------------------------------------------------------
 function RFP.OFF(idBinding, tParams)
 	if(idBinding == g_LIGHT_PROXY) then
-		setWLEDOff()
+		sceneOff()
 	end
 end
 
@@ -262,21 +227,10 @@ end
 function RFP.TOGGLE(idBinding, tParams)
 	if(idBinding == g_LIGHT_PROXY) then
 		if(g_lightOn == true) then
-			setWLEDOff()
+			sceneOff()
 		else
-			setWLEDOn()
+			recallScene()
 		end
-	end
-end
-
----------------------------------------------------------------------------------
---Function Name : RFP.SET_LEVEL
---Parameters    : tParams(table), idBinding(int)
---Description   : Function called when "SET LEVEL" ReceivedFromProxy is received.
----------------------------------------------------------------------------------
-function RFP.SET_LEVEL(idBinding, tParams)
-	if(idBinding == g_LIGHT_PROXY) then
-		RFP.RAMP_TO_LEVEL(idBinding, tParams)
 	end
 end
 
@@ -288,53 +242,15 @@ end
 function RFP.BUTTON_ACTION(idBinding, tParams)
 	if(idBinding == g_LIGHT_PROXY) then
 		if(tParams["BUTTON_ID"] == "0" and tParams["ACTION"] == "2") then
-			setWLEDOn()
+			recallScene()
 		elseif(tParams["BUTTON_ID"] == "1" and tParams["ACTION"] == "2") then
-			setWLEDOff()
+			sceneOff()
 		elseif(tParams["BUTTON_ID"] == "2" and tParams["ACTION"] == "2") then
 			if(g_lightOn == true) then
-				setWLEDOff()
+				sceneOff()
 			else
-				setWLEDOn()
+				recallScene()
 			end
-		end
-	end
-end
-
--------------------------------------------------------------------------------------
---Function Name : RFP.RAMP_TO_LEVEL
---Parameters    : tParams(table), idBinding(int)
---Description   : Function called when "RAMP TO LEVEL" ReceivedFromProxy is received.
--------------------------------------------------------------------------------------
-function RFP.RAMP_TO_LEVEL(idBinding, tParams)
-	if(idBinding == g_LIGHT_PROXY) then
-		local level = math.floor((tParams["LEVEL"] * .01) * 255)
-		g_lightLevel = level
-		setWLEDLevel(g_lightLevel)
-		if(g_lightLevel > 0) then
-			g_lightOn = true
-			if(g_currentPreset == "off") then
-				setPreset("on")
-				g_currentPreset = "on"
-			end
-		else 
-			g_lightOn = false
-			setPreset("off")
-		end
-		C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL_CHANGED", g_lightLevel, "NOTIFY")
-		C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL", g_lightLevel, "NOTIFY")
-		if (g_lightLevel == 0) then
-			C4:UpdateProperty("Power State", "off")
-			C4:UpdateProperty("Brightness", g_lightLevel)
-			C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "False"})
-			C4:SendToProxy(301, "MATCH_LED_STATE", {['STATE'] = "True"})
-			C4:SendToProxy(302, "MATCH_LED_STATE", {['STATE'] = "False"})
-		else
-			C4:UpdateProperty("Power State", "on")
-			C4:UpdateProperty("Brightness", g_lightLevel)
-			C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "True"})
-			C4:SendToProxy(301, "MATCH_LED_STATE", {['STATE'] = "False"})
-			C4:SendToProxy(302, "MATCH_LED_STATE", {['STATE'] = "True"})
 		end
 	end
 end
@@ -351,150 +267,103 @@ function RFP.GET_CONNECTED_STATE(idBinding, tParams)
 	end
 end
 
---------------------------------------------------------------------------------------------------
---Function Name : setWLEDPreset
---Parameters    : preset(int)
---Description   : Function called to send the Preset to WLED Controller based on Preset Selection.
---------------------------------------------------------------------------------------------------
---[[function setWLEDPreset(preset) 
-	local baseUrl = "http://" .. g_IP .. "/win&PL="
-	local queryUrl = baseUrl .. preset
-	local t = C4:url() :OnDone(
-		function(transfer, responses, errCode, errMsg) 
-			if (errCode == 0) then
-				local lresp = responses[#responses]
-				g_lightOn = true
-			else
-				if (errCode == -1) then 
-					Dbg("OnDone: transfer was aborted")
-				else
-					Dbg("OnDone: transfer failed with error " .. errCode .. ": " .. errMsg .. " (" .. #responses .. " responses completed)") 
-				end
-			end 
-		end)
-	:SetOptions({ ["fail_on_error"] = false, ["timeout"] = 30, ["connect_timeout"] = 10})
-	:Get(queryUrl, {})
-end]]
-
 --------------------------------------------------------
---Function Name : setSceneOn
---Parameters    : preset(int)
---Description   : Function called to turn WLED light on.
+--Function Name : recallScene
+--Parameters    : sceneId(STRING)
+--Description   : Function called to recall HUE scene.
 --------------------------------------------------------
-function setSceneOn() 
-	setSceneLevel(255)
+function recallScene() 
 	g_lightOn = true
-	setPreset("on")
+	local http_headers = {}
+    local http_headers["hue-application-key"] = g_appKey]
+	if g_smartScene == false
+		g_url = ('https://' .. g_IP .. '/clip/v2/resource/scene/' .. g_sceneId)
+    	local body = '{"recall": {"action": "active"}}'
+	else
+		g_url = ('https://' .. g_IP .. '/clip/v2/resource/smart_scene/' .. g_sceneId)
+		local body = '{"recall": {"action": "activate"}}'
+	end
+    local t = C4:url()
+    :OnDone(
+	   function(transfer, responses, errCode, errMsg)
+		  if (errCode == 0) then
+			 local lresp = responses[#responses]
+			 print("OnDone: transfer succeeded (" .. #responses .. " responses received), last response code: " .. lresp.code)
+			 for hdr,val in pairs(lresp.headers) do
+				print("OnDone: " .. hdr .. " = " .. val)
+			 end
+			 print("OnDone: body of last response: " ..tostring(lresp.body))
+		  elseif (errCode == -1) then
+			 print("OnDone: transfer was aborted")
+		  else
+			 print("OnDone: transfer failed with error " .. errCode .. ": " .. errMsg .. " (" .. #responses .. " responses completed)")
+		  end
+	   end
+    )
+    :SetOptions({
+	   ["fail_on_error"] = false,
+	   ["timeout"] = 30,
+	   ["connect_timeout"] = 10,
+	   ["ssl_verify_peer"] = false,
+	   ["ssl_verify_host"] = false
+    })
+    :Put(g_url, body, http_headers)
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL_CHANGED", "100", "NOTIFY")
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL", 100, "NOTIFY")
 	C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "True"})
 	C4:SendToProxy(301, "MATCH_LED_STATE", {['STATE'] = "False"})
 	C4:SendToProxy(302, "MATCH_LED_STATE", {['STATE'] = "True"})
 	C4:UpdateProperty("Power State", "on")
-	C4:UpdateProperty("Brightness", "100")
 end
 
 ---------------------------------------------------------
---Function Name : setWLEDOff
---Parameters    : preset(int)
---Description   : Function called to turn WLED light off.
+--Function Name : sceneOff
+--Parameters    : sceneId(STRING)
+--Description   : Function called to turn HUE scene off.
 ---------------------------------------------------------
-function setWLEDOff() 
-	setWLEDLevel(0)
+function sceneOff() 
 	g_lightOn = false
-	setPreset("off")
+	local http_headers = {}
+    local http_headers["hue-application-key"] = g_appKey]
+	if g_smartScene == false
+		g_url = ('https://' .. g_IP .. '/clip/v2/resource/scene/' .. g_sceneId)
+    	local body = '{"on": {"on":false}}'
+	else
+		g_url = ('https://' .. g_IP .. '/clip/v2/resource/smart_scene/' .. g_sceneId)
+		local body = '{"recall": {"action": "deactivate"}}'
+	end
+    local t = C4:url()
+    :OnDone(
+	   function(transfer, responses, errCode, errMsg)
+		  if (errCode == 0) then
+			 local lresp = responses[#responses]
+			 print("OnDone: transfer succeeded (" .. #responses .. " responses received), last response code: " .. lresp.code)
+			 for hdr,val in pairs(lresp.headers) do
+				print("OnDone: " .. hdr .. " = " .. val)
+			 end
+			 print("OnDone: body of last response: " ..tostring(lresp.body))
+		  elseif (errCode == -1) then
+			 print("OnDone: transfer was aborted")
+		  else
+			 print("OnDone: transfer failed with error " .. errCode .. ": " .. errMsg .. " (" .. #responses .. " responses completed)")
+		  end
+	   end
+    )
+    :SetOptions({
+	   ["fail_on_error"] = false,
+	   ["timeout"] = 30,
+	   ["connect_timeout"] = 10,
+	   ["ssl_verify_peer"] = false,
+	   ["ssl_verify_host"] = false
+    })
+    :Put(g_url, body, http_headers)
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL_CHANGED", "0", "NOTIFY")
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL", 0, "NOTIFY")
 	C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "False"})
 	C4:SendToProxy(301, "MATCH_LED_STATE", {['STATE'] = "True"})
 	C4:SendToProxy(302, "MATCH_LED_STATE", {['STATE'] = "False"})
 	C4:UpdateProperty("Power State", "off")
-	C4:UpdateProperty("Brightness", "0")
 end
-
------------------------------------------------------------------------------------------------------------
---Function Name : setWLEDLevel
---Parameters    : level(int)
---Description   : Function called to send the Brightness Level to WLED Controller based on Level Selection.
------------------------------------------------------------------------------------------------------------
-function setWLEDLevel(level) 
-	local baseUrl = "http://" .. g_IP .. "/win&A="
-	local queryUrl = baseUrl .. level
-	local t = C4:url() :OnDone(
-		function(transfer, responses, errCode, errMsg) 
-			if (errCode == 0) then
-				local lresp = responses[#responses]
-			else
-				if (errCode == -1) then 
-					Dbg("OnDone: transfer was aborted")
-				else
-					Dbg("OnDone: transfer failed with error " .. errCode .. ": " .. errMsg .. " (" .. #responses .. " responses completed)") 
-				end
-			end 
-		end)
-	:SetOptions({ ["fail_on_error"] = false, ["timeout"] = 30, ["connect_timeout"] = 10})
-	:Get(queryUrl, {})
-end
-
-------------------------------------------------------------------------------
---Function Name : setPreset
---Parameters    : preset(str)
---Description   : Function called to set the Preset based on Preset Selection.
-------------------------------------------------------------------------------
---[[function setPreset(preset)
-	C4:SendToProxy(g_UIBUTTON_PROXY, "ICON_CHANGED", {icon=preset, icon_description="Preset=" .. preset})
-	g_currentPreset = preset
-    if(g_currentPreset == "off") then
-		setWLEDLevel(0)
-		g_lightOn = false
-		C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL_CHANGED", "0", "NOTIFY")
-		C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL", 0, "NOTIFY")
-		C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "False"})
-		C4:SendToProxy(301, "MATCH_LED_STATE", {['STATE'] = "True"})
-		C4:SendToProxy(302, "MATCH_LED_STATE", {['STATE'] = "False"})
-		C4:UpdateProperty("Power State", "off")
-		C4:UpdateProperty("Brightness", "0")
-    elseif(g_currentPreset == "on") then
-		setWLEDPreset(99)
-    elseif(g_currentPreset == "1") then
-		setWLEDPreset(1) 
-    elseif(g_currentPreset == "2") then
-		setWLEDPreset(2)
-    elseif(g_currentPreset == "3") then
-		setWLEDPreset(3)
-    elseif(g_currentPreset == "4") then
-		setWLEDPreset(4)
-    elseif(g_currentPreset == "5") then
-		setWLEDPreset(5)
-    elseif(g_currentPreset == "6") then
-		setWLEDPreset(6)
-    elseif(g_currentPreset == "7") then
-		setWLEDPreset(7)
-    elseif(g_currentPreset == "8") then
-		setWLEDPreset(8)
-    elseif(g_currentPreset == "9") then
-		setWLEDPreset(9)
-    elseif(g_currentPreset == "10") then
-		setWLEDPreset(10)
-    end
-end]]
-
---------------------------------------------------------------
---Function Name : nextPreset
---Description   : Function called to cycle to the next Preset.
---------------------------------------------------------------
---[[function nextPreset()
-	if(g_currentPreset == "off") then
-		g_currentPreset = "1"
-    elseif(g_currentPreset == "on") then
-		g_currentPreset = "1"
-    elseif(g_currentPreset == "" .. g_MAX_PRESETS) then
-		g_currentPreset = "off"
-    else
-		g_currentPreset = "" .. tonumber(g_currentPreset) + 1
-    end
-	setPreset(g_currentPreset)
-end]]
 
 ---------------------------------------------------------------------------------------------
 --Function Name : Dbg

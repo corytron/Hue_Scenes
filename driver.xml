@@ -14,7 +14,6 @@
 	<large image_source="c4z">icons/device_lg.png</large>
 	<proxies qty="2">
 		<proxy proxybindingid="5001" name="HUE_SCENES" primary="True">light_v2</proxy>
-		<!-- proxy proxybindingid="5002" name="WLED Presets" image_source="c4z" small_image="icons/device_sm.png" large_image="icons/device_lg.png">uibutton</proxy -->
 	</proxies>
 	<events/>
 	<config>
@@ -45,7 +44,7 @@
 					<item>Off</item>
 					<item>On</item>
 				</items>
-				<default>Off</default>
+				<default>On</default>
 				<readonly>false</readonly>
 			</property>
 			<property>
@@ -69,16 +68,20 @@
 				<default>off</default>
 				<readonly>true</readonly>
 			</property>
-			<!-- property>
-				<name>Brightness</name>
-				<type>STRING</type>
-				<default>0</default>
-				<readonly>true</readonly>
-			</property -->
 			<property>
 				<name>Scene ID</name>
 				<type>STRING</type>
 				<default>b971ee5d-748c-4af0-8535-b46d2450492a</default>
+			<property>
+     			<name>Is A Smart Scene</name>
+				<type>LIST</type>
+				<items>
+					<item>Yes</item>
+					<item>No</item>
+				</items>
+				<default>No</default>
+				<readonly>false</readonly>
+    		</property>
 		</properties>
 		<actions>
 			<action>
@@ -86,41 +89,25 @@
 				<command>Recall Scene</command>
 			</action>
 			<action>
-				<name>Recall Smart Scene</name>
-				<command>Recall Smart Scene</command>
-			</action>
-			<action>
 				<name>Scene Off</name>
 				<command>Scene Off</command>
-			</action>
-			<action>
-				<name>Smart Scene Off</name>
-				<command>Turn Smart Scene off</command>
 			</action>
 		</actions>
 		<commands>
 			<command>
 				<name>Recall Scene</name>
-				<description>Recall Scene on NAME to: PARAM1</description>
-			</command>
-			<command>
-				<name>Recall Smart Scene</name>
-				<description>Recall Smart Scene on NAME to: PARAM1</description>
+				<description>Recall Scene</description>
 			</command>
 			<command>
 				<name>Scene Off</name>
 				<description>Turn Scene off</description>
 			</command>
-			<command>
-				<name>Smart Scene Off</name>
-				<description>Turn Smart Scene off</description>
-			</command>
 		</commands>
 	</config>
 	<capabilities>
-		<dimmer>True</dimmer>
-		<set_level>True</set_level>
-		<ramp_level>True</ramp_level>
+		<dimmer>False</dimmer>
+		<set_level>False</set_level>
+		<ramp_level>False</ramp_level>
 		<click_rates>False</click_rates>
 		<hold_rates>False</hold_rates>
 		<has_preset>False</has_preset>
