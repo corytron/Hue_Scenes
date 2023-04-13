@@ -275,7 +275,7 @@ end
 function recallScene() 
 	g_lightOn = true
 	local http_headers = {}
-    local http_headers["hue-application-key"] = g_appKey]
+    local http_headers["hue-application-key"] = g_appKey
 	if g_smartScene == false
 		g_url = ('https://' .. g_IP .. '/clip/v2/resource/scene/' .. g_sceneId)
     	local body = '{"recall": {"action": "active"}}'
@@ -324,7 +324,7 @@ end
 function sceneOff() 
 	g_lightOn = false
 	local http_headers = {}
-    local http_headers["hue-application-key"] = g_appKey]
+    local http_headers["hue-application-key"] = g_appKey
 	if g_smartScene == false
 		g_url = ('https://' .. g_IP .. '/clip/v2/resource/scene/' .. g_sceneId)
     	local body = '{"on": {"on":false}}'
