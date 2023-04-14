@@ -1,3 +1,9 @@
+require ('drivers-common-public.global.lib')
+require ('drivers-common-public.global.timer')
+require ('drivers-common-public.global.url')
+
+JSON = require ('drivers-common-public.module.json')
+
 -------------
 -- Globals --
 -------------
@@ -5,12 +11,13 @@ do
 	EC = {}
 	OPC = {}
 	RFP = {}
+	g_httpHeaders = {}
 	g_IP = "0.0.0.0"
 	g_LIGHT_PROXY = 5001
 	g_smartScene = false
-	g_url = ('https://' .. Properties['Bridge IP'] .. '/clip/v2/resource/scene/' .. Properties['Scene ID'])
 	g_appKey = "000000000"
 	g_sceneId = "000000000"
+	g_httpHeaders["hue-application-key"] = g_appKey
 	g_lightOn = false
 	g_debugMode = 0
 	g_DbgPrint = nil
@@ -102,6 +109,7 @@ end
 -------------------------------------------------------------------------
 function OPC.HUE_BRIDGE_APP_KEY(strProperty)
 	g_appKey = strProperty or "000000000"
+	g_httpHeaders["hue-application-key"] = strProperty
 end
 
 -------------------------------------------------------------------------
@@ -119,9 +127,7 @@ end
 --Description   : Function called when Is A Smart Scene property changes value.
 -------------------------------------------------------------------------
 function OPC.IS_A_SMART_SCENE(strProperty)
-	if (strProperty == "No") then
-		g_smartScene = false
-	else
+	if (strProperty == "Yes") then
 		g_smartScene = true
 	end
 end
@@ -159,8 +165,7 @@ end
 --Description   : Function called when "Recall Scene" ExecuteCommand is received.
 ----------------------------------------------------------------------------------
 function EC.RECALL_SCENE(tParams)
-	local scene = Properties['Scene ID']
-	recallScene(scene)
+	recallScene(g_sceneId)
 end
 
 ----------------------------------------------------------------------------------
@@ -169,8 +174,7 @@ end
 --Description   : Function called when "Scene Off" ExecuteCommand is received.
 ----------------------------------------------------------------------------------
 function EC.SCENE_OFF(tParams)
-	local scene = Properties['Scene ID']
-	sceneOff(scene)
+	sceneOff(g_sceneId)
 end
 
 -----------------------------------------------------------------
@@ -204,7 +208,7 @@ end
 --------------------------------------------------------------------------
 function RFP.ON(idBinding, tParams)
 	if(idBinding == g_LIGHT_PROXY) then
-		recallScene()
+		recallScene(g_sceneId)
 	end
 end
 
@@ -215,7 +219,7 @@ end
 ---------------------------------------------------------------------------
 function RFP.OFF(idBinding, tParams)
 	if(idBinding == g_LIGHT_PROXY) then
-		sceneOff()
+		sceneOff(g_sceneId)
 	end
 end
 
@@ -227,9 +231,9 @@ end
 function RFP.TOGGLE(idBinding, tParams)
 	if(idBinding == g_LIGHT_PROXY) then
 		if(g_lightOn == true) then
-			sceneOff()
+			sceneOff(g_sceneId)
 		else
-			recallScene()
+			recallScene(g_sceneId)
 		end
 	end
 end
@@ -242,14 +246,14 @@ end
 function RFP.BUTTON_ACTION(idBinding, tParams)
 	if(idBinding == g_LIGHT_PROXY) then
 		if(tParams["BUTTON_ID"] == "0" and tParams["ACTION"] == "2") then
-			recallScene()
+			recallScene(g_sceneId)
 		elseif(tParams["BUTTON_ID"] == "1" and tParams["ACTION"] == "2") then
-			sceneOff()
+			sceneOff(g_sceneId)
 		elseif(tParams["BUTTON_ID"] == "2" and tParams["ACTION"] == "2") then
 			if(g_lightOn == true) then
-				sceneOff()
+				sceneOff(g_sceneId)
 			else
-				recallScene()
+				recallScene(g_sceneId)
 			end
 		end
 	end
@@ -270,18 +274,15 @@ end
 --------------------------------------------------------
 --Function Name : recallScene
 --Parameters    : sceneId(STRING)
---Description   : Function called to recall HUE scene.
+--Description   : Function called to recall the HUE scene.
 --------------------------------------------------------
-function recallScene() 
+function recallScene(strId) 
 	g_lightOn = true
-	local http_headers = {}
-    local http_headers["hue-application-key"] = g_appKey
-	if g_smartScene == false
-		g_url = ('https://' .. g_IP .. '/clip/v2/resource/scene/' .. g_sceneId)
-    	local body = '{"recall": {"action": "active"}}'
-	else
-		g_url = ('https://' .. g_IP .. '/clip/v2/resource/smart_scene/' .. g_sceneId)
-		local body = '{"recall": {"action": "activate"}}'
+	local l_url = ('https://' .. g_IP .. '/clip/v2/resource/scene/' .. strId)
+	local l_body = '{"recall": {"action": "active"}}'
+	if Properties['Is A Smart Scene'] == "Yes" then
+		l_url = ('https://' .. g_IP .. '/clip/v2/resource/smart_scene/' .. strId)
+		l_body = '{"recall": {"action": "activate"}}'
 	end
     local t = C4:url()
     :OnDone(
@@ -298,6 +299,8 @@ function recallScene()
 		  else
 			 print("OnDone: transfer failed with error " .. errCode .. ": " .. errMsg .. " (" .. #responses .. " responses completed)")
 		  end
+		  print("OnDone: URL is: " .. l_url)
+		  print("OnDone: PUT Body is: " .. l_body)
 	   end
     )
     :SetOptions({
@@ -307,7 +310,7 @@ function recallScene()
 	   ["ssl_verify_peer"] = false,
 	   ["ssl_verify_host"] = false
     })
-    :Put(g_url, body, http_headers)
+    :Put(l_url, l_body, g_httpHeaders)
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL_CHANGED", "100", "NOTIFY")
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL", 100, "NOTIFY")
 	C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "True"})
@@ -319,18 +322,15 @@ end
 ---------------------------------------------------------
 --Function Name : sceneOff
 --Parameters    : sceneId(STRING)
---Description   : Function called to turn HUE scene off.
+--Description   : Function called to turn the HUE scene off.
 ---------------------------------------------------------
-function sceneOff() 
+function sceneOff(strId) 
 	g_lightOn = false
-	local http_headers = {}
-    local http_headers["hue-application-key"] = g_appKey
-	if g_smartScene == false
-		g_url = ('https://' .. g_IP .. '/clip/v2/resource/scene/' .. g_sceneId)
-    	local body = '{"on": {"on":false}}'
-	else
-		g_url = ('https://' .. g_IP .. '/clip/v2/resource/smart_scene/' .. g_sceneId)
-		local body = '{"recall": {"action": "deactivate"}}'
+	local l_url = ('https://' .. g_IP .. '/clip/v2/resource/scene/' .. strId)
+	local l_body = '{"recall": {"dimming": {"brightness": "0"}}}'
+	if Properties['Is A Smart Scene'] == "Yes" then
+		l_url = ('https://' .. g_IP .. '/clip/v2/resource/smart_scene/' .. strId)
+		l_body = '{"recall": {"action": "deactivate"}}'
 	end
     local t = C4:url()
     :OnDone(
@@ -347,6 +347,8 @@ function sceneOff()
 		  else
 			 print("OnDone: transfer failed with error " .. errCode .. ": " .. errMsg .. " (" .. #responses .. " responses completed)")
 		  end
+		  print("OnDone: URL is: " .. l_url)
+		  print("OnDone: PUT Body is: " .. l_body)
 	   end
     )
     :SetOptions({
@@ -356,7 +358,7 @@ function sceneOff()
 	   ["ssl_verify_peer"] = false,
 	   ["ssl_verify_host"] = false
     })
-    :Put(g_url, body, http_headers)
+    :Put(l_url, l_body, g_httpHeaders)
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL_CHANGED", "0", "NOTIFY")
 	C4:SendToProxy(g_LIGHT_PROXY, "LIGHT_LEVEL", 0, "NOTIFY")
 	C4:SendToProxy(300, "MATCH_LED_STATE", {['STATE'] = "False"})

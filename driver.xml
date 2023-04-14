@@ -1,186 +1,187 @@
 <devicedata>
-	<copyright>Copyright 2023 Static421. All rights reserved.</copyright>
-	<creator>Cory Fair</creator>
-	<manufacturer>Philips</manufacturer>
-	<name>Hue Scenes</name>
-	<model>Hue</model>
-	<created>12/04/2023 12:00 AM</created>
-	<modified>12/04/2023 12:00 AM</modified>
-	<version>1</version>
-	<control>lua_gen</control>
-	<driver>DriverWorks</driver>
-	<controlmethod>ip</controlmethod>
-	<small image_source="c4z">icons/device_sm.png</small>
-	<large image_source="c4z">icons/device_lg.png</large>
-	<proxies qty="2">
-		<proxy proxybindingid="5001" name="HUE_SCENES" primary="True">light_v2</proxy>
-	</proxies>
-	<config>
-		<script file="driver.lua"/>
-		<documentation file="www/documentation/index.html"/>
-		<properties>
-			<property>
-				<name>Driver Information</name>
-				<type>LABEL</type>
-				<default>Driver Information</default>
-			</property>
-			<property>
-				<name>Driver Name</name>
-				<type>STRING</type>
-				<default/>
-				<readonly>true</readonly>
-			</property>
-			<property>
-				<name>Driver Version</name>
-				<type>STRING</type>
-				<default/>
-				<readonly>true</readonly>
-			</property>
-			<property>
-				<name>Debug Mode</name>
-				<type>LIST</type>
-				<items>
-					<item>Off</item>
-					<item>On</item>
-				</items>
-				<default>On</default>
-				<readonly>false</readonly>
-			</property>
-			<property>
-				<name>Device Information</name>
-				<type>LABEL</type>
-				<default>Device Information</default>
-			</property>
-			<property>
-				<name>Bridge IP</name>
-				<type>STRING</type>
-				<default>10.0.1.220</default>
-			</property>
-			<property>
-				<name>Hue Bridge App Key</name>
-				<type>STRING</type>
-				<default>m7Mvb3xTGazwQzHnltIATDJCus2za75OCJFv-mD4</default>
-			</property>
-			<property>
-				<name>Power State</name>
-				<type>STRING</type>
-				<default>off</default>
-				<readonly>true</readonly>
-			</property>
-			<property>
-				<name>Scene ID</name>
-				<type>STRING</type>
-				<default>b971ee5d-748c-4af0-8535-b46d2450492a</default>
-			<property>
-     			<name>Is A Smart Scene</name>
-				<type>LIST</type>
-				<items>
-					<item>Yes</item>
-					<item>No</item>
-				</items>
-				<default>No</default>
-				<readonly>false</readonly>
-    		</property>
-		</properties>
-		<actions>
-			<action>
-				<name>Recall Scene</name>
-				<command>Recall Scene</command>
-			</action>
-			<action>
-				<name>Scene Off</name>
-				<command>Scene Off</command>
-			</action>
-		</actions>
-		<commands>
-			<command>
-				<name>Recall Scene</name>
-				<description>Recall Scene</description>
-			</command>
-			<command>
-				<name>Scene Off</name>
-				<description>Turn Scene off</description>
-			</command>
-		</commands>
-	</config>
-	<capabilities>
-		<dimmer>False</dimmer>
-		<set_level>False</set_level>
-		<ramp_level>False</ramp_level>
-		<click_rates>False</click_rates>
-		<hold_rates>False</hold_rates>
-		<has_preset>False</has_preset>
-		<on_off>True</on_off>
-		<has_leds>False</has_leds>
-		<hide_proxy_events>False</hide_proxy_events>
-		<hide_proxy_properties>True</hide_proxy_properties>
-		<has_button_events>True</has_button_events>
-		<num_buttons>3</num_buttons>
-		<load_group_support>True</load_group_support>
-		<advanced_scene_support>False</advanced_scene_support>
-		<reduced_als_support>True</reduced_als_support>
-		<supports_multichannel_scenes>False</supports_multichannel_scenes>
-	</capabilities>
-	<connections>
-		<connection proxybindingid="5001">
-			<id>5001</id>
-			<facing>6</facing>
-			<connectionname>HUE_SCENES</connectionname>
-			<type>2</type>
-			<consumer>False</consumer>
-			<audiosource>False</audiosource>
-			<videosource>False</videosource>
-			<linelevel>False</linelevel>
-			<classes>
-				<class>
-					<classname>LIGHT_V2</classname>
-				</class>
-			</classes>
-		</connection>
-		<connection proxybindingid="5001">
-			<id>300</id>
-			<facing>6</facing>
-			<connectionname>On Button Link</connectionname>
-			<type>1</type>
-			<consumer>False</consumer>
-			<audiosource>False</audiosource>
-			<videosource>False</videosource>
-			<linelevel>True</linelevel>
-			<classes>
-				<class>
-					<classname>BUTTON_LINK</classname>
-				</class>
-			</classes>
-		</connection>
-		<connection proxybindingid="5001">
-			<id>301</id>
-			<facing>6</facing>
-			<connectionname>Off Button Link</connectionname>
-			<type>1</type>
-			<consumer>False</consumer>
-			<audiosource>False</audiosource>
-			<videosource>False</videosource>
-			<linelevel>True</linelevel>
-			<classes>
-				<class>
-					<classname>BUTTON_LINK</classname>
-				</class>
-			</classes>
-		</connection>
-		<connection proxybindingid="5001">
-			<id>302</id>
-			<facing>6</facing>
-			<connectionname>Toggle Button Link</connectionname>
-			<type>1</type>
-			<consumer>False</consumer>
-			<audiosource>False</audiosource>
-			<videosource>False</videosource>
-			<linelevel>True</linelevel>
-			<classes>
-				<class>
-					<classname>BUTTON_LINK</classname>
-				</class>
-			</classes>
-		</connection>
-	</connections>
+  <copyright>Copyright 2023 Static421. All rights reserved.</copyright>
+  <creator>Cory Fair</creator>
+  <manufacturer>Philips</manufacturer>
+  <name>Hue Scenes</name>
+  <model>Hue</model>
+  <created>12/04/2023 12:00 AM</created>
+  <modified>12/04/2023 12:00 AM</modified>
+  <version>2.1</version>
+  <control>lua_gen</control>
+  <driver>DriverWorks</driver>
+  <controlmethod>ip</controlmethod>
+  <small image_source="c4z">icons/device_sm.png</small>
+  <large image_source="c4z">icons/device_lg.png</large>
+  <proxies qty="2">
+    <proxy proxybindingid="5001" name="HUE_SCENES" primary="True">light_v2</proxy>
+  </proxies>
+  <config>
+    <script file="driver.lua" />
+    <documentation file="www/documentation/index.html" />
+    <properties>
+      <property>
+        <name>Driver Information</name>
+        <type>LABEL</type>
+        <default>Driver Information</default>
+      </property>
+      <property>
+        <name>Driver Name</name>
+        <type>STRING</type>
+        <default>Hue Scenes</default>
+        <readonly>true</readonly>
+      </property>
+      <property>
+        <name>Driver Version</name>
+        <type>STRING</type>
+        <default />
+        <readonly>true</readonly>
+      </property>
+      <property>
+        <name>Debug Mode</name>
+        <type>LIST</type>
+        <items>
+          <item>Off</item>
+          <item>On</item>
+        </items>
+        <default>On</default>
+        <readonly>false</readonly>
+      </property>
+      <property>
+        <name>Device Information</name>
+        <type>LABEL</type>
+        <default>Device Information</default>
+      </property>
+      <property>
+        <name>Bridge IP</name>
+        <type>STRING</type>
+        <default>10.0.1.220</default>
+      </property>
+      <property>
+        <name>Hue Bridge App Key</name>
+        <type>STRING</type>
+        <default>m7Mvb3xTGazwQzHnltIATDJCus2za75OCJFv-mD4</default>
+      </property>
+      <property>
+        <name>Power State</name>
+        <type>STRING</type>
+        <default>off</default>
+        <readonly>true</readonly>
+      </property>
+      <property>
+        <name>Scene ID</name>
+        <type>STRING</type>
+        <default>b971ee5d-748c-4af0-8535-b46d2450492a</default>
+      </property>
+      <property>
+        <name>Is A Smart Scene</name>
+        <type>LIST</type>
+        <items>
+          <item>Yes</item>
+          <item>No</item>
+        </items>
+        <default>No</default>
+        <readonly>false</readonly>
+      </property>
+    </properties>
+    <actions>
+      <action>
+        <name>Recall Scene</name>
+        <command>Recall Scene</command>
+      </action>
+      <action>
+        <name>Scene Off</name>
+        <command>Scene Off</command>
+      </action>
+    </actions>
+    <commands>
+      <command>
+        <name>Recall Scene</name>
+        <description>Recall Scene</description>
+      </command>
+      <command>
+        <name>Scene Off</name>
+        <description>Turn Scene off</description>
+      </command>
+    </commands>
+  </config>
+  <capabilities>
+    <dimmer>False</dimmer>
+    <set_level>False</set_level>
+    <ramp_level>False</ramp_level>
+    <click_rates>False</click_rates>
+    <hold_rates>False</hold_rates>
+    <has_preset>False</has_preset>
+    <on_off>True</on_off>
+    <has_leds>False</has_leds>
+    <hide_proxy_events>False</hide_proxy_events>
+    <hide_proxy_properties>True</hide_proxy_properties>
+    <has_button_events>True</has_button_events>
+    <num_buttons>3</num_buttons>
+    <load_group_support>True</load_group_support>
+    <advanced_scene_support>False</advanced_scene_support>
+    <reduced_als_support>True</reduced_als_support>
+    <supports_multichannel_scenes>False</supports_multichannel_scenes>
+  </capabilities>
+  <connections>
+    <connection proxybindingid="5001">
+      <id>5001</id>
+      <facing>6</facing>
+      <connectionname>HUE_SCENES</connectionname>
+      <type>2</type>
+      <consumer>False</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>False</linelevel>
+      <classes>
+        <class>
+          <classname>LIGHT_V2</classname>
+        </class>
+      </classes>
+    </connection>
+    <connection proxybindingid="5001">
+      <id>300</id>
+      <facing>6</facing>
+      <connectionname>On Button Link</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes>
+        <class>
+          <classname>BUTTON_LINK</classname>
+        </class>
+      </classes>
+    </connection>
+    <connection proxybindingid="5001">
+      <id>301</id>
+      <facing>6</facing>
+      <connectionname>Off Button Link</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes>
+        <class>
+          <classname>BUTTON_LINK</classname>
+        </class>
+      </classes>
+    </connection>
+    <connection proxybindingid="5001">
+      <id>302</id>
+      <facing>6</facing>
+      <connectionname>Toggle Button Link</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes>
+        <class>
+          <classname>BUTTON_LINK</classname>
+        </class>
+      </classes>
+    </connection>
+  </connections>
 </devicedata>
