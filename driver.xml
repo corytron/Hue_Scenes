@@ -103,6 +103,7 @@
            "Driver Name"         -> no handler (readonly, set by OnDriverInit)
            "Driver Version"      -> no handler (readonly, set by OnDriverInit)
            "Power State"         -> no handler (readonly, set by updateLightProxy)
+           "Connection Status"   -> no handler (readonly, set by sendHuePut/validateConfig)
          ============================================================== -->
     <properties>
 
@@ -182,6 +183,23 @@
         <name>Power State</name>
         <type>STRING</type>
         <default>off</default>
+        <readonly>true</readonly>
+      </property>
+
+      <!-- Connection Status: Shows the result of the last Hue Bridge API call.
+           Possible values:
+             "OK"                  - Last API call succeeded (HTTP 2xx)
+             "Not Configured - *"  - A required property is missing
+             "Connection Failed"   - Network error reaching the bridge
+             "API Error <code>"    - Bridge returned an HTTP error
+             "No Response"         - Response was empty
+             "Unknown"             - Initial state before first API call
+           Updated by sendHuePut() OnDone callback and validateConfig().
+           -> No OPC handler needed (readonly, set programmatically) -->
+      <property>
+        <name>Connection Status</name>
+        <type>STRING</type>
+        <default>Unknown</default>
         <readonly>true</readonly>
       </property>
 
