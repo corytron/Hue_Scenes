@@ -1,12 +1,12 @@
 <devicedata>
-  <copyright>Copyright 2023 Static421. All rights reserved.</copyright>
+  <copyright>Copyright 2024 Cory Fair. All rights reserved.</copyright>
   <creator>Cory Fair</creator>
   <manufacturer>Philips</manufacturer>
   <name>Hue Scenes</name>
   <model>Hue</model>
   <created>12/04/2023 12:00 AM</created>
-  <modified>12/04/2023 12:00 AM</modified>
-  <version>2.1</version>
+  <modified>03/02/2026 12:00 AM</modified>
+  <version>3</version>
   <control>lua_gen</control>
   <driver>DriverWorks</driver>
   <controlmethod>ip</controlmethod>
@@ -43,7 +43,7 @@
           <item>Off</item>
           <item>On</item>
         </items>
-        <default>On</default>
+        <default>Off</default>
         <readonly>false</readonly>
       </property>
       <property>
@@ -54,12 +54,12 @@
       <property>
         <name>Bridge IP</name>
         <type>STRING</type>
-        <default>10.0.1.220</default>
+        <default />
       </property>
       <property>
         <name>Hue Bridge App Key</name>
         <type>STRING</type>
-        <default>m7Mvb3xTGazwQzHnltIATDJCus2za75OCJFv-mD4</default>
+        <default />
       </property>
       <property>
         <name>Power State</name>
@@ -70,14 +70,14 @@
       <property>
         <name>Scene ID</name>
         <type>STRING</type>
-        <default>b971ee5d-748c-4af0-8535-b46d2450492a</default>
+        <default />
       </property>
       <property>
         <name>Is A Smart Scene</name>
         <type>LIST</type>
         <items>
-          <item>Yes</item>
           <item>No</item>
+          <item>Yes</item>
         </items>
         <default>No</default>
         <readonly>false</readonly>
@@ -96,11 +96,11 @@
     <commands>
       <command>
         <name>Recall Scene</name>
-        <description>Recall Scene</description>
+        <description>Activate the Hue scene</description>
       </command>
       <command>
         <name>Scene Off</name>
-        <description>Turn Scene off</description>
+        <description>Turn the Hue scene off</description>
       </command>
     </commands>
   </config>
