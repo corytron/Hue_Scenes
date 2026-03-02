@@ -1,41 +1,140 @@
+<!--
+  ========================================================================
+  Hue Scenes - Control4 DriverWorks Driver Configuration (driver.xml)
+  ========================================================================
+  This XML file defines everything Control4 needs to know about this driver:
+    - Metadata (name, version, manufacturer)
+    - Proxy type (what kind of device this appears as in the C4 system)
+    - Properties (configurable fields shown in Composer)
+    - Actions & Commands (programming triggers available in Composer)
+    - Capabilities (what features this light proxy supports)
+    - Connections (proxy bindings and button link bindings)
+
+  How this file relates to driver.lua:
+    - Properties defined here are read in Lua via Properties["Property Name"]
+    - Property names map to OPC handlers: "Bridge IP" -> OPC.BRIDGE_IP()
+    - Action commands map to EC handlers: "Recall Scene" -> EC.RECALL_SCENE()
+    - Connection IDs map to constants: id 5001 -> LIGHT_PROXY_BINDING
+    - Capabilities tell Control4 what the LIGHT_V2 proxy should expose
+  ========================================================================
+-->
 <devicedata>
+
+  <!-- ================================================================
+       DRIVER METADATA
+       Basic identification shown in Composer's driver info panel.
+       "name" and "version" are read by driver.lua via C4:GetDriverConfigInfo()
+       to populate the read-only Driver Name and Driver Version properties.
+       ================================================================ -->
   <copyright>Copyright 2024 Cory Fair. All rights reserved.</copyright>
   <creator>Cory Fair</creator>
   <manufacturer>Philips</manufacturer>
-  <name>Hue Scenes</name>
+  <name>Hue Scenes</name>       <!-- Shown in Composer driver list; read by OnDriverInit() -->
   <model>Hue</model>
   <created>12/04/2023 12:00 AM</created>
   <modified>03/02/2026 12:00 AM</modified>
-  <version>3</version>
+  <version>3</version>          <!-- Shown in Composer; read by OnDriverInit() -->
+
+  <!-- ================================================================
+       DRIVER TYPE
+       - control: "lua_gen" = generic Lua DriverWorks driver
+       - driver: "DriverWorks" = uses the DriverWorks SDK
+       - controlmethod: "ip" = communicates over IP network (not serial/IR)
+       ================================================================ -->
   <control>lua_gen</control>
   <driver>DriverWorks</driver>
   <controlmethod>ip</controlmethod>
+
+  <!-- ================================================================
+       ICONS
+       Small and large icons shown in Composer and on navigators.
+       image_source="c4z" means the images are bundled inside the .c4z file.
+       These PNG files live in the icons/ directory of the project.
+       ================================================================ -->
   <small image_source="c4z">icons/device_sm.png</small>
   <large image_source="c4z">icons/device_lg.png</large>
+
+  <!-- ================================================================
+       PROXIES
+       Defines what Control4 proxy this driver implements. A proxy is
+       the abstract device type that Control4 understands (light, thermostat,
+       media player, etc.).
+
+       This driver uses "light_v2" which is the modern light proxy supporting
+       on/off, dimming, color, and button events (we only use on/off and buttons).
+
+       proxybindingid="5001" - This ID links the proxy to its connection
+         definition below and must match LIGHT_PROXY_BINDING in driver.lua.
+       primary="True" - This is the main proxy for the driver.
+       qty="2" - Historical quirk: the light_v2 proxy counts as 2 proxy slots.
+       ================================================================ -->
   <proxies qty="2">
     <proxy proxybindingid="5001" name="HUE_SCENES" primary="True">light_v2</proxy>
   </proxies>
+
+  <!-- ================================================================
+       CONFIGURATION
+       Contains the Lua script reference, documentation, properties,
+       actions, and commands.
+       ================================================================ -->
   <config>
+
+    <!-- Points to the main Lua file that contains all driver logic -->
     <script file="driver.lua" />
+
+    <!-- Points to the HTML documentation shown in Composer's "Documentation" tab.
+         This is the www/documentation/ app that renders www/documentation.md -->
     <documentation file="www/documentation/index.html" />
+
+    <!-- ==============================================================
+         PROPERTIES
+         These appear in Composer under the driver's Properties tab.
+         Each property has a name, type, default value, and optional
+         readonly flag. When a property changes, Control4 calls
+         OnPropertyChanged(name) in driver.lua, which dispatches to
+         the OPC handler table.
+
+         Property name -> OPC handler mapping:
+           "Debug Mode"          -> OPC.DEBUG_MODE(value)
+           "Bridge IP"           -> OPC.BRIDGE_IP(value)
+           "Hue Bridge App Key"  -> OPC.HUE_BRIDGE_APP_KEY(value)
+           "Scene ID"            -> OPC.SCENE_ID(value)
+           "Is A Smart Scene"    -> OPC.IS_A_SMART_SCENE(value)
+           "Driver Name"         -> no handler (readonly, set by OnDriverInit)
+           "Driver Version"      -> no handler (readonly, set by OnDriverInit)
+           "Power State"         -> no handler (readonly, set by updateLightProxy)
+         ============================================================== -->
     <properties>
+
+      <!-- Section label - LABEL type properties are non-editable headings
+           that visually group related properties in Composer -->
       <property>
         <name>Driver Information</name>
         <type>LABEL</type>
         <default>Driver Information</default>
       </property>
+
+      <!-- Read-only: populated by OnDriverInit() from the <name> tag above -->
       <property>
         <name>Driver Name</name>
         <type>STRING</type>
         <default>Hue Scenes</default>
         <readonly>true</readonly>
       </property>
+
+      <!-- Read-only: populated by OnDriverInit() from the <version> tag above -->
       <property>
         <name>Driver Version</name>
         <type>STRING</type>
         <default />
         <readonly>true</readonly>
       </property>
+
+      <!-- Debug Mode: On/Off dropdown.
+           When "On", enables Dbg() print output in the Lua Output window.
+           Automatically reverts to "Off" after 8 hours via a timer in
+           OPC.DEBUG_MODE() to prevent leaving debug logging on indefinitely.
+           Defaults to "Off" so production systems don't log excessively. -->
       <property>
         <name>Debug Mode</name>
         <type>LIST</type>
@@ -46,32 +145,66 @@
         <default>Off</default>
         <readonly>false</readonly>
       </property>
+
+      <!-- Section label for device configuration properties -->
       <property>
         <name>Device Information</name>
         <type>LABEL</type>
         <default>Device Information</default>
       </property>
+
+      <!-- Bridge IP: The local IP address of the Philips Hue Bridge.
+           Used to construct API URLs: https://<Bridge IP>/clip/v2/resource/...
+           Example: "192.168.1.50"
+           -> Stored in g_IP by OPC.BRIDGE_IP() -->
       <property>
         <name>Bridge IP</name>
         <type>STRING</type>
         <default />
       </property>
+
+      <!-- Hue Bridge App Key: The authentication token for the Hue CLIP v2 API.
+           Sent as the "hue-application-key" HTTP header on every request.
+           Generated by pressing the bridge link button and POSTing to /api.
+           Example: "m7Mvb3xTGazwQzHnltIATDJCus2za75OCJFv-mD4"
+           -> Stored in g_appKey by OPC.HUE_BRIDGE_APP_KEY() -->
       <property>
         <name>Hue Bridge App Key</name>
         <type>STRING</type>
         <default />
       </property>
+
+      <!-- Read-only: shows "on" or "off" based on the last action taken.
+           Updated by updateLightProxy() in driver.lua after each scene
+           recall or scene off. Useful for dealers to see current state
+           in Composer without checking navigators. -->
       <property>
         <name>Power State</name>
         <type>STRING</type>
         <default>off</default>
         <readonly>true</readonly>
       </property>
+
+      <!-- Scene ID: The UUID of the Hue scene to control.
+           Found by querying the bridge API:
+             GET /clip/v2/resource/scene (regular scenes)
+             GET /clip/v2/resource/smart_scene (smart scenes)
+           Example: "b971ee5d-748c-4af0-8535-b46d2450492a"
+           -> Stored in g_sceneId by OPC.SCENE_ID() -->
       <property>
         <name>Scene ID</name>
         <type>STRING</type>
         <default />
       </property>
+
+      <!-- Is A Smart Scene: Determines which Hue API endpoint to use.
+           "No" (default) -> /clip/v2/resource/scene/ with "active"/"active+brightness:0"
+           "Yes"          -> /clip/v2/resource/smart_scene/ with "activate"/"deactivate"
+
+           Hue smart scenes are time-based scenes that automatically adjust
+           lighting throughout the day. They have a different API contract
+           than regular scenes.
+           -> Stored in g_smartScene (boolean) by OPC.IS_A_SMART_SCENE() -->
       <property>
         <name>Is A Smart Scene</name>
         <type>LIST</type>
@@ -82,17 +215,46 @@
         <default>No</default>
         <readonly>false</readonly>
       </property>
+
     </properties>
+
+    <!-- ==============================================================
+         ACTIONS
+         Actions appear in Composer's "Actions" tab for the driver and
+         can also be used in Composer programming (under the device's
+         actions). When triggered, Director calls ExecuteCommand() with
+         strCommand="LUA_ACTION" and tParams.ACTION=<command value>.
+
+         The command value is converted to UPPER_SNAKE_CASE and dispatched
+         to the EC handler table:
+           "Recall Scene" -> EC.RECALL_SCENE()
+           "Scene Off"    -> EC.SCENE_OFF()
+         ============================================================== -->
     <actions>
+      <!-- Recall Scene: Activates the Hue scene (turns lights on to scene state) -->
       <action>
-        <name>Recall Scene</name>
-        <command>Recall Scene</command>
+        <name>Recall Scene</name>        <!-- Display name in Composer Actions tab -->
+        <command>Recall Scene</command>   <!-- Value sent as tParams.ACTION -->
       </action>
+
+      <!-- Scene Off: Deactivates the Hue scene (dims to 0 or deactivates smart scene) -->
       <action>
         <name>Scene Off</name>
         <command>Scene Off</command>
       </action>
     </actions>
+
+    <!-- ==============================================================
+         COMMANDS
+         Commands appear in Composer's programming UI under this device.
+         They can be added to "When/Then" programming events. When
+         triggered, Director calls ExecuteCommand() with the command name.
+
+         These are the same actions as above but exposed as programmable
+         commands, giving dealers two ways to trigger them:
+           1. Actions tab (manual trigger during setup)
+           2. Programming (automated triggers based on events)
+         ============================================================== -->
     <commands>
       <command>
         <name>Recall Scene</name>
@@ -103,26 +265,116 @@
         <description>Turn the Hue scene off</description>
       </command>
     </commands>
+
   </config>
+
+  <!-- ================================================================
+       CAPABILITIES
+       Tells the LIGHT_V2 proxy what features this driver supports.
+       Since we only control scenes (not individual lights), most
+       dimming and advanced features are disabled. The proxy uses these
+       to decide what UI controls to show in navigators.
+       ================================================================ -->
   <capabilities>
+    <!-- Dimming: disabled. We don't support variable brightness -
+         scenes are either fully on or off (brightness 0). -->
     <dimmer>False</dimmer>
     <set_level>False</set_level>
     <ramp_level>False</ramp_level>
+
+    <!-- Click/Hold rates: disabled. These control how dimming behaves
+         when a keypad button is held down. Not applicable since we
+         don't support dimming. -->
     <click_rates>False</click_rates>
     <hold_rates>False</hold_rates>
+
+    <!-- Preset: disabled. Light presets are a C4 feature for saving
+         and recalling brightness/color combinations. Not needed since
+         the Hue scene IS the preset. -->
     <has_preset>False</has_preset>
+
+    <!-- On/Off: enabled. This is the core capability - allows the
+         light to be turned on and off from navigators and programming.
+         Without this, the light wouldn't show on/off buttons. -->
     <on_off>True</on_off>
+
+    <!-- Physical LEDs on the device: disabled. This driver is a virtual
+         device with no physical LEDs. (Button link LEDs on keypads are
+         controlled separately via MATCH_LED_STATE.) -->
     <has_leds>False</has_leds>
+
+    <!-- Proxy events: visible. Allows events from this proxy to appear
+         in Composer programming. -->
     <hide_proxy_events>False</hide_proxy_events>
+
+    <!-- Proxy properties: hidden. Hides the standard light proxy
+         properties (like default levels) since they don't apply to
+         a scene-based driver. Our custom properties above are still shown. -->
     <hide_proxy_properties>True</hide_proxy_properties>
+
+    <!-- Button events: enabled. Required for BUTTON_ACTION commands to
+         work. This tells the proxy to generate button events that get
+         routed to RFP.BUTTON_ACTION() in driver.lua. -->
     <has_button_events>True</has_button_events>
+
+    <!-- Number of buttons: 3 (On, Off, Toggle).
+         This must match the number of BUTTON_LINK connections below.
+         Button IDs are 0-indexed: 0=On, 1=Off, 2=Toggle. -->
     <num_buttons>3</num_buttons>
+
+    <!-- Load group support: enabled. Allows this light to be included
+         in Control4 lighting load groups (scenes that control multiple
+         lights together). -->
     <load_group_support>True</load_group_support>
+
+    <!-- Advanced Lighting Scenes (ALS): disabled for full ALS, but
+         reduced ALS is enabled below. Full ALS requires dimming support
+         which we don't have. -->
     <advanced_scene_support>False</advanced_scene_support>
+
+    <!-- Reduced ALS: enabled. Allows this light to participate in
+         Advanced Lighting Scenes with basic on/off support (no dimming
+         or color). Scenes can include this light as "on" or "off". -->
     <reduced_als_support>True</reduced_als_support>
+
+    <!-- Multichannel scenes: disabled. Multichannel is for lights that
+         have independently controllable channels (like RGBW strips).
+         Not applicable to Hue scene control. -->
     <supports_multichannel_scenes>False</supports_multichannel_scenes>
   </capabilities>
+
+  <!-- ================================================================
+       CONNECTIONS
+       Defines the proxy bindings and button link bindings that appear
+       in Composer's Connections tab. Each connection has a unique ID
+       that is used in driver.lua to route commands and send notifications.
+
+       Connection ID -> driver.lua constant mapping:
+         5001 -> LIGHT_PROXY_BINDING   (main light proxy)
+         300  -> ON_BUTTON_BINDING     (on button link)
+         301  -> OFF_BUTTON_BINDING    (off button link)
+         302  -> TOGGLE_BUTTON_BINDING (toggle button link)
+
+       Connection fields explained:
+         id                - Unique numeric ID, referenced in driver.lua
+         facing            - 6 = "front" facing (standard for most connections)
+         connectionname    - Display name in Composer's Connections tab
+         type              - 1 = Control, 2 = Proxy
+         consumer          - False = this is a provider (other devices connect TO us)
+         audiosource/videosource - False (not an AV device)
+         linelevel         - True for button links (control-level connections)
+         proxybindingid    - Links this connection to the proxy defined above
+         classes/classname - The Control4 connection class type
+       ================================================================ -->
   <connections>
+
+    <!-- PRIMARY LIGHT PROXY CONNECTION (id=5001)
+         This is the main connection that makes the driver appear as a
+         light in Control4. It uses the LIGHT_V2 class which supports
+         on/off, dimming, color, and button events.
+         type=2 (Proxy) means this is a proxy connection, not a control connection.
+         All RFP.ON(), RFP.OFF(), RFP.TOGGLE(), and RFP.BUTTON_ACTION()
+         calls arrive on this binding ID. -->
     <connection proxybindingid="5001">
       <id>5001</id>
       <facing>6</facing>
@@ -138,6 +390,15 @@
         </class>
       </classes>
     </connection>
+
+    <!-- ON BUTTON LINK (id=300)
+         Allows a keypad button to be bound to "On" for this light.
+         When a keypad is connected here in Composer, pressing that
+         button sends BUTTON_ACTION with BUTTON_ID="0" to driver.lua.
+         The LED on the keypad button is controlled via MATCH_LED_STATE
+         sent to this binding ID from updateLightProxy().
+         type=1 (Control) with linelevel=True is the standard config
+         for button link connections. -->
     <connection proxybindingid="5001">
       <id>300</id>
       <facing>6</facing>
@@ -153,6 +414,11 @@
         </class>
       </classes>
     </connection>
+
+    <!-- OFF BUTTON LINK (id=301)
+         Same as On Button Link but for the "Off" action.
+         BUTTON_ACTION arrives with BUTTON_ID="1".
+         LED state is the inverse of the On button (lit when scene is off). -->
     <connection proxybindingid="5001">
       <id>301</id>
       <facing>6</facing>
@@ -168,6 +434,12 @@
         </class>
       </classes>
     </connection>
+
+    <!-- TOGGLE BUTTON LINK (id=302)
+         Same as On/Off Button Links but toggles the scene based on
+         the current g_lightOn state in driver.lua.
+         BUTTON_ACTION arrives with BUTTON_ID="2".
+         LED state matches the On button (lit when scene is on). -->
     <connection proxybindingid="5001">
       <id>302</id>
       <facing>6</facing>
@@ -183,5 +455,7 @@
         </class>
       </classes>
     </connection>
+
   </connections>
+
 </devicedata>
