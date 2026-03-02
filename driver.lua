@@ -107,8 +107,11 @@ end
 function OnDriverInit()
 	-- Populate the read-only "Driver Name" and "Driver Version" properties
 	-- in Composer. These pull from the <name> and <version> tags in driver.xml.
-	C4:UpdateProperty("Driver Name", C4:GetDriverConfigInfo("name"))
-	C4:UpdateProperty("Driver Version", C4:GetDriverConfigInfo("version"))
+	-- Guard against C4:GetDriverConfigInfo returning nil.
+	local driverName = C4:GetDriverConfigInfo("name") or "Hue Scenes"
+	local driverVersion = C4:GetDriverConfigInfo("version") or ""
+	C4:UpdateProperty("Driver Name", driverName)
+	C4:UpdateProperty("Driver Version", driverVersion)
 
 	-- Allow Composer's "Execute" tab to send Lua commands to this driver
 	-- for debugging purposes. Only works when a dealer is connected.
@@ -126,8 +129,13 @@ function OnDriverLateInit()
 	-- Iterate through all driver properties and trigger their OPC handlers.
 	-- This ensures our global variables (g_IP, g_appKey, g_sceneId, etc.)
 	-- are populated from the saved property values when the driver starts.
+	-- Each call is pcall-wrapped so one failing property doesn't prevent
+	-- the rest from being initialized.
 	for k, v in pairs(Properties) do
-		OnPropertyChanged(k)
+		local success, err = pcall(OnPropertyChanged, k)
+		if (not success) then
+			print("OnDriverLateInit: failed to init property '" .. tostring(k) .. "': " .. tostring(err))
+		end
 	end
 
 	-- Notify the LIGHT_V2 proxy that this driver is online and responsive.
@@ -147,8 +155,10 @@ end
 function OnDriverDestroyed()
 	-- Cancel the debug mode auto-off timer if it's running, to prevent
 	-- it from firing after the driver is gone.
+	-- pcall guards against the timer being already expired or invalid.
 	if (g_DbgPrint ~= nil) then
-		g_DbgPrint:Cancel()
+		pcall(function() g_DbgPrint:Cancel() end)
+		g_DbgPrint = nil
 	end
 end
 
@@ -170,10 +180,10 @@ end
 -- property handler is just defining a new OPC.NEW_PROPERTY function.
 ------------------------------------------------------------------------
 function OnPropertyChanged(strProperty)
-	Dbg("OnPropertyChanged: " .. strProperty .. " (" .. Properties[strProperty] .. ")")
-
 	local propertyValue = Properties[strProperty]
 	if (propertyValue == nil) then propertyValue = "" end
+
+	Dbg("OnPropertyChanged: " .. tostring(strProperty) .. " (" .. propertyValue .. ")")
 
 	-- Convert property name to UPPER_SNAKE_CASE to match OPC function names.
 	-- "Bridge IP" -> "BRIDGE_IP", "Debug Mode" -> "DEBUG_MODE", etc.
@@ -312,6 +322,7 @@ end
 --   tParams.ACTION="Recall Scene" -> key="RECALL_SCENE" -> EC.RECALL_SCENE()
 ------------------------------------------------------------------------
 function ExecuteCommand(strCommand, tParams)
+	strCommand = strCommand or ""
 	tParams = tParams or {}
 	Dbg("ExecuteCommand: " .. strCommand .. " (" .. formatParams(tParams) .. ")")
 
@@ -388,8 +399,9 @@ end
 -- The RFP table dispatch pattern is the same as EC and OPC.
 ------------------------------------------------------------------------
 function ReceivedFromProxy(idBinding, strCommand, tParams)
+	strCommand = strCommand or ""
 	tParams = tParams or {}
-	Dbg("ReceivedFromProxy: [" .. idBinding .. "] : " .. strCommand .. " (" .. formatParams(tParams) .. ")")
+	Dbg("ReceivedFromProxy: [" .. tostring(idBinding) .. "] : " .. strCommand .. " (" .. formatParams(tParams) .. ")")
 
 	local key = string.upper(strCommand)
 	key = string.gsub(key, "%s+", "_")
@@ -524,6 +536,33 @@ end
 
 
 ------------------------------------------------------------------------
+-- Function: validateConfig
+-- Checks that Bridge IP, App Key, and Scene ID are all configured
+-- before attempting an API call. Returns true if valid, false + message
+-- if not. This prevents sending malformed HTTP requests when the driver
+-- has not been fully configured in Composer.
+------------------------------------------------------------------------
+function validateConfig(sceneId)
+	if (g_IP == nil or g_IP == "" or g_IP == "0.0.0.0") then
+		print("Hue Scenes: Bridge IP is not configured")
+		C4:UpdateProperty("Connection Status", "Not Configured - Set Bridge IP")
+		return false
+	end
+	if (g_appKey == nil or g_appKey == "") then
+		print("Hue Scenes: App Key is not configured")
+		C4:UpdateProperty("Connection Status", "Not Configured - Set App Key")
+		return false
+	end
+	if (sceneId == nil or sceneId == "") then
+		print("Hue Scenes: Scene ID is not configured")
+		C4:UpdateProperty("Connection Status", "Not Configured - Set Scene ID")
+		return false
+	end
+	return true
+end
+
+
+------------------------------------------------------------------------
 -- Function: sendHuePut
 -- Sends an authenticated HTTP PUT request to the Hue Bridge CLIP v2 API.
 --
@@ -555,15 +594,30 @@ function sendHuePut(url, body)
 			-- responses: array of response objects (one per redirect hop)
 			-- responses[#responses] is the final response
 			if (errCode == 0) then
-				local resp = responses[#responses]
-				Dbg("PUT success (" .. resp.code .. "): " .. url)
-				Dbg("Response: " .. tostring(resp.body))
+				if (responses and #responses > 0) then
+					local resp = responses[#responses]
+					local code = resp and resp.code or "unknown"
+					local body = resp and tostring(resp.body) or ""
+					Dbg("PUT success (" .. tostring(code) .. "): " .. url)
+					Dbg("Response: " .. body)
+					-- Report HTTP-level errors (4xx/5xx) to Connection Status
+					if (resp and resp.code and resp.code >= 400) then
+						print("Hue API error (" .. tostring(resp.code) .. "): " .. body)
+						C4:UpdateProperty("Connection Status", "API Error " .. tostring(resp.code))
+					else
+						C4:UpdateProperty("Connection Status", "OK")
+					end
+				else
+					print("PUT returned no response: " .. url)
+					C4:UpdateProperty("Connection Status", "No Response")
+				end
 			elseif (errCode == -1) then
 				-- Transfer was cancelled (e.g., driver destroyed mid-request)
 				print("PUT aborted: " .. url)
 			else
 				-- Network error, DNS failure, connection refused, etc.
-				print("PUT failed (" .. errCode .. "): " .. tostring(errMsg) .. " | " .. url)
+				print("PUT failed (" .. tostring(errCode) .. "): " .. tostring(errMsg) .. " | " .. url)
+				C4:UpdateProperty("Connection Status", "Connection Failed")
 			end
 		end)
 		:SetOptions({
@@ -596,6 +650,8 @@ end
 -- Control4 that the light is now on.
 ------------------------------------------------------------------------
 function recallScene(sceneId)
+	if (not validateConfig(sceneId)) then return end
+
 	local url, body
 	if (g_smartScene) then
 		url = "https://" .. g_IP .. "/clip/v2/resource/smart_scene/" .. sceneId
@@ -633,6 +689,8 @@ end
 -- Control4 that the light is now off.
 ------------------------------------------------------------------------
 function sceneOff(sceneId)
+	if (not validateConfig(sceneId)) then return end
+
 	local url, body
 	if (g_smartScene) then
 		url = "https://" .. g_IP .. "/clip/v2/resource/smart_scene/" .. sceneId
